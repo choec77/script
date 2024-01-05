@@ -1,0 +1,14 @@
+---
+- hosts: web_servers
+  remote_user: root
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+  - name: tomcat list file copy
+    copy:
+      src: "/root/ansible/tomcat_ip_list"
+      dest: "/root/tomcat_ip_list"
+  - name: apache config file copy
+    copy:
+      src: "/root/ansible/apache_config.sh"
+      dest: "/root/apache_config.sh"
