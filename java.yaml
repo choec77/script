@@ -1,0 +1,105 @@
+---
+- hosts: java_servers
+  remote_user: root
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+# ?¤치?? tomcat real version, 변??ë???? _ . ?????°기 ?¬ìë가?
+  vars_prompt:
+    - name: javaversion
+      prompt: "java version"
+      private: no
+
+# Java ?¤치
+  tasks:
+    - name: openjdk 1.7
+      get_url:
+        url: https://download.java.net/openjdk/jdk7u75/ri/openjdk-7u75-b13-linux-x64-18_dec_2014.tar.gz
+        dest: /tmp/
+      when: javaversion == "1.7"
+
+    - name: openjdk 1.8
+      get_url:
+        url: https://download.java.net/openjdk/jdk8u41/ri/openjdk-8u41-b04-linux-x64-14_jan_2020.tar.gz
+        dest: /tmp/
+      when: javaversion == "1.8"
+
+    - name: openjdk 9
+      get_url:
+        url: https://download.java.net/java/GA/jdk9/9/binaries/openjdk-9_linux-x64_bin.tar.gz
+        dest: /tmp/
+      when: javaversion == "9"
+
+    - name: openjdk 10
+      get_url:
+        url: https://download.java.net/java/GA/jdk10/10/binaries/openjdk-10_linux-x64_bin.tar.gz
+        dest: /tmp/
+      when: javaversion == "10"
+
+    - name: openjdk 11
+      get_url:
+        url: https://download.java.net/java/ga/jdk11/openjdk-11_linux-x64_bin.tar.gz
+        dest: /tmp/
+      when: javaversion == "11"
+
+    - name: openjdk 12
+      get_url:
+        url: https://download.java.net/java/GA/jdk12/33/GPL/openjdk-12_linux-x64_bin.tar.gz
+        dest: /tmp/
+      when: javaversion == "12"
+
+    - name: openjdk 13
+      get_url:
+        url: https://download.java.net/java/GA/jdk13/5b8a42f3905b406298b72d750b6919f6/33/GPL/openjdk-13_linux-x64_bin.tar.gz
+        dest: /tmp/
+      when: javaversion == "13"
+
+    - name: openjdk 14
+      get_url:
+        url: https://download.java.net/java/GA/jdk14/076bab302c7b4508975440c56f6cc26a/36/GPL/openjdk-14_linux-x64_bin.tar.gz
+        dest: /tmp/
+      when: javaversion == "14"
+
+    - name: openjdk 15
+      get_url:
+        url: https://download.java.net/java/GA/jdk15/779bf45e88a44cbd9ea6621d33e33db1/36/GPL/openjdk-15_linux-x64_bin.tar.gz
+        dest: /tmp/
+      when: javaversion == "15"
+
+    - name: openjdk 16
+      get_url:
+        url: https://download.java.net/java/GA/jdk16/7863447f0ab643c585b9bdebf67c69db/36/GPL/openjdk-16_linux-x64_bin.tar.gz
+        dest: /tmp/
+      when: javaversion == "16"
+
+    - name: openjdk 17
+      get_url:
+        url: https://download.java.net/java/GA/jdk17/0d483333a00540d886896bac774ff48b/35/GPL/openjdk-17_linux-x64_bin.tar.gz
+        dest: /tmp/
+      when: javaversion == "17"
+
+# Java Install
+    - name: java unarchive1
+      shell: |
+        tar xvzf /tmp/openjdk*.tar.gz
+        mv java* /usr/local/java
+        chown root.root /usr/local/java
+        rm -rf /tmp/openjdk*.tar.gz
+      when: javaversion == "1.7" or javaversion == "1.8"
+
+    - name: java unarchive2
+      shell: |
+        tar xvzf /tmp/openjdk*.tar.gz
+        mv jdk-* /usr/local/java
+        chown root.root /usr/local/java
+        rm -rf /tmp/openjdk*.tar.gz
+      when: javaversion == "9" or "10" or "11" or "12" or "13" or "14" or "15" or "16" or "17"
+        
+    - name: java config
+      shell:
+        cmd: |
+          cat << EOF >> /etc/profile
+          export JAVA_HOME=/usr/local/java
+          export PATH=$PATH:$JAVA_HOME/bin
+          export CLASSPATH=$JAVA_HOME/jre/ext:$JAVA_HOME/lib/tools.jar
+          EOF
+
