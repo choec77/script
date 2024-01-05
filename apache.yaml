@@ -1,0 +1,264 @@
+---
+- hosts: web_servers
+  remote_user: root
+  vars_prompt:
+    - name: apacheversion
+      prompt: "Apache version"
+      private: no
+      default: 2.4.57
+
+    - name: aprversion
+      prompt: "apr version"
+      private: no
+      default: 1.7.4
+
+    - name: aprutilversion
+      prompt: "apr util version"
+      private: no
+      default: 1.6.3
+
+    - name: conversion
+      prompt: "connect version"
+      private: no
+      default: 1.2.49
+
+  tasks: 
+        # package install
+    - name: package install
+      apt:
+        update_cache: true
+        state: latest
+        name:
+          - gcc
+          - g++
+          - net-tools
+          - curl
+          - build-essential
+          - zlibc
+          - zlib1g
+          - zlib1g-dev
+          - libssl-dev
+          - openssl
+          - ncurses-dev
+          - libexpat1-dev
+          - libpcre3-dev
+      when: ansible_os_family == 'Debian'
+
+        # apr install
+    - name: apr down
+      get_url:
+        url: http://mirror.apache-kr.org/apache/apr/apr-{{ aprversion }}.tar.gz
+        dest: /tmp/apr-{{ aprversion }}.tar.gz
+
+    - name: apr unarchive
+      unarchive:
+        src: /tmp/apr-{{ aprversion }}.tar.gz
+        dest: /tmp/
+        remote_src: yes
+
+    - name: apr install
+      command: "{{ item }} chdir=/tmp/apr-{{ aprversion }}"
+      with_items:
+      - ./configure --prefix=/usr/local/apr
+      - /bin/make
+      - /bin/make install
+      when: ansible_os_family == 'RedHat'
+
+    - name: apr install
+      command: "{{ item }} chdir=/tmp/apr-{{ aprversion }}"
+      with_items:
+      - ./configure --prefix=/usr/local/apr
+      - /usr/bin/make
+      - /usr/bin/make install
+      when: ansible_os_family == 'Debian'
+
+        # apt-util install
+    - name: apt util down
+      get_url:
+        url: http://mirror.apache-kr.org/apache/apr/apr-util-{{ aprutilversion }}.tar.gz
+        dest: /tmp/apr-{{ aprutilversion }}.tar.gz
+
+    - name: apr util unarchive
+      unarchive:
+        src: /tmp/apr-{{ aprutilversion }}.tar.gz
+        dest: /tmp/
+        remote_src: yes
+
+    - name: apr util install
+      command: "{{ item }} chdir=/tmp/apr-util-{{ aprutilversion }}"
+      with_items:
+      - ./configure --with-apr=/usr/local/apr --prefix=/usr/local/apr-util
+      - /bin/make
+      - /bin/make install
+      when: ansible_os_family == 'RedHat'
+
+    - name: apr util install
+      command: "{{ item }} chdir=/tmp/apr-util-{{ aprutilversion }}"
+      with_items:
+      - ./configure --with-apr=/usr/local/apr --prefix=/usr/local/apr-util
+      - /usr/bin/make
+      - /usr/bin/make install
+      when: ansible_os_family == 'Debian'
+
+        # apache install
+    - name: apache down
+      get_url:
+        url: http://archive.apache.org/dist/httpd/httpd-{{ apacheversion }}.tar.gz
+        dest: /tmp/httpd-{{ apacheversion }}.tar.gz
+
+    - name: apache unarchive
+      unarchive:
+        src: /tmp/httpd-{{ apacheversion }}.tar.gz
+        dest: /tmp/
+        remote_src: yes
+
+    - name: apache install
+      command: "{{ item }} chdir=/tmp/httpd-{{ apacheversion }}"
+      with_items:
+      - ./configure --prefix=/usr/local/apache --enable-so --enable-rewrite --enable-mods-shared=all --enable-modules=shared --enable-ssl --with-apr=/usr/local/apr --with-apr-util=/usr/local/apr-util --with-mpm=prefork
+      - /bin/make
+      - /bin/make install
+      when: ansible_os_family == 'RedHat'
+
+    - name: apache install
+      command: "{{ item }} chdir=/tmp/httpd-{{ apacheversion }}"
+      with_items:
+      - ./configure --prefix=/usr/local/apache --enable-so --enable-rewrite --enable-mods-shared=all --enable-modules=shared --enable-ssl --with-apr=/usr/local/apr --with-apr-util=/usr/local/apr-util --with-mpm=prefork
+      - /usr/bin/make
+      - /usr/bin/make install
+      when: ansible_os_family == 'Debian'
+
+        # connector install
+    - name: con down
+      get_url:
+        url: https://mirror.navercorp.com/apache/tomcat/tomcat-connectors/jk/tomcat-connectors-{{ conversion }}-src.tar.gz
+        dest: /tmp/tomcat-connectors-{{ conversion }}-src.tar.gz
+        
+    - name: con unarchive
+      unarchive:
+        src: /tmp/tomcat-connectors-{{ conversion }}-src.tar.gz
+        dest: /tmp/
+        remote_src: yes
+
+    - name: con install
+      command: "{{ item }} chdir=/tmp/tomcat-connectors-{{ conversion }}-src/native"
+      with_items:
+      - ./configure --with-apxs=/usr/local/apache/bin/apxs
+      - /bin/make
+      - /bin/make install
+      when: ansible_os_family == 'RedHat'
+
+    - name: con install
+      command: "{{ item }} chdir=/tmp/tomcat-connectors-{{ conversion }}-src/native"
+      with_items:
+      - ./configure --with-apxs=/usr/local/apache/bin/apxs
+      - /usr/bin/make
+      - /usr/bin/make install
+      when: ansible_os_family == 'Debian'
+
+        # apache config
+    - name: apache config
+      shell: 
+        cmd: |
+          # httpd
+          cat << EOF >> /usr/local/apache/conf/httpd.conf
+          LoadModule jk_module modules/mod_jk.so
+          Include conf/vhosts.conf
+          Include conf/mod_jk.conf
+          EOF
+
+          sed -i "s/#ServerName localhost/ServerName localhost/g" /usr/local/apache/conf/httpd.conf
+          sed -i "s/#ServerName www.example.com:80/ServerName localhost/g" /usr/local/apache/conf/httpd.conf
+
+          # vhosts
+          touch /usr/local/apache/conf/vhosts.conf
+          cat <<EOF >> /usr/local/apache/conf/vhosts.conf
+          <VirtualHost *:80> /
+          ServerName localhost
+          DocumentRoot /usr/local/apache/htdocs
+          JkMount /*.jsp loadbalancer
+          JkMount /*.do loadbalancer
+          JkMount /*.servlet loadbalancer
+          </VirtualHost>
+          EOF
+
+          # mod_jk
+          touch /usr/local/apache/conf/mod_jk.conf
+          cat <<EOF > /usr/local/apache/conf/mod_jk.conf
+          <ifModule jk_module>
+          JkWorkersFile conf/workers.properties
+          JkLogFile logs/mod_jk.log
+          JkLogLevel info
+          JkShmFile /usr/local/apache/logs/jk-runtime-status
+          JkWatchdogInterval 30
+          JkLogStampFormat "[%a %b %d %H:%M:%S %Y]"
+          </ifModule>
+          EOF
+
+          # workers.properties
+          touch /usr/local/apache/conf/workers.properties
+          cat <<EOF > /usr/local/apache/conf/workers.properties
+          worker.list=loadbalancer
+          worker.loadbalancer.type=lb
+          worker.loadbalancer.balanced_workers=
+          worker.loadbalancer.sticky_session=1
+         
+          EOF
+
+          # systemctl 
+    - name: centos systemctl
+      shell:
+        cmd: |
+          touch /usr/lib/systemd/system/apache.service
+          cat <<EOF > /usr/lib/systemd/system/apache.service
+          [Unit] 
+          Description=apache Service
+          Atter=syslog.target
+          After=network.target
+
+          [Service]
+          Type=forking
+          ExecStart=/usr/local/apache/bin/apachectl start
+          ExecStop=/usr/local/apache/bin/apachectl graceful-stop
+          ExecReload=/usr/local/apache/bin/apachectl graceful
+
+          User=root
+          Group=root
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          sed -i "s/User daemon/User nobody/g" /usr/local/apache/conf/httpd.conf
+          sed -i "s/Group daemon/Group nobody/g" /usr/local/apache/conf/httpd.conf
+
+      when: ansible_os_family == 'RedHat'
+
+    - name: ubuntu systemctl
+      shell:
+        cmd: |
+          touch /etc/systemd/system/apache.service
+          cat <<EOF > /etc/systemd/system/apache.service
+          [Unit] 
+          Description=apache Service
+          Atter=syslog.target
+          After=network.target
+
+          [Service]
+          Type=forking
+          ExecStart=/usr/local/apache/bin/apachectl start
+          ExecStop=/usr/local/apache/bin/apachectl graceful-stop
+          ExecReload=/usr/local/apache/bin/apachectl graceful
+
+          User=root
+          Group=root
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          sed -i "s/User daemon/User nobody/g" /usr/local/apache/conf/httpd.conf
+          sed -i "s/Group daemon/Group nogroup/g" /usr/local/apache/conf/httpd.conf
+
+      when: ansible_os_family == 'Debian'
+
