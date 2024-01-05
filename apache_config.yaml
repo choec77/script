@@ -1,0 +1,14 @@
+---
+- hosts: web_servers
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: apache config
+      shell:
+        cmd: |
+          chmod 755 /root/apache_config.sh
+          /root/apache_config.sh
+          rm -rf /root/tomcat_ip_list
+          rm -rf /root/apache_config.sh
+
+
