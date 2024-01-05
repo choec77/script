@@ -1,0 +1,51 @@
+---
+- hosts: config_servers
+  remote_user: root
+  vars:
+    ansible_python_interpreter: /usr/bin/python
+  tasks:
+    - name: package install
+      yum:
+        update_cache: true
+        state: latest
+        name:
+          - openssl
+          - openssl-devel
+          - libtool
+          - libtool-ltdl
+          - libtool-ltdl-devel
+          - zlib-devel
+          - zlib
+          - freetype-devel
+          - freetype
+          - libpng-devel
+          - libpng
+          - libjpeg-devel
+          - libjpeg
+          - libtiff-devel
+          - libtiff
+          - gd-devel
+          - gd
+          - pcre-devel
+          - pcre
+          - libxml2-devel
+          - libxml2
+          - gdbm-devel
+          - gdbm
+          - ncurses-devel
+          - ncurses
+          - curl-devel
+          - curl
+          - expat-devel
+          - expat
+          - bzip2-devel
+          - bzip2-libs
+          - bzip2
+          - gcc*
+          - wget
+          - pam-devel
+          - net-snmp*
+          - libicu
+          - libicu-devel
+      when: ansible_os_family == 'RedHat'
+
